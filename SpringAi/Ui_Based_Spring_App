@@ -1,0 +1,254 @@
+# 🌐 UI-Based Spring AI Application (Azure OpenAI)
+
+## 🎯 Use Case
+
+This demo builds a **Spring Boot web application** where users can interact with an AI model through a simple web interface.
+
+The application:
+
+- Accepts user input from the UI.
+- Sends the request to Azure OpenAI using **Spring AI**.
+- Displays the AI-generated response.
+- Supports both **normal** and **streaming** responses.
+
+---
+
+# 📁 Project Structure
+
+```text
+src
+├── main
+│   ├── java
+│   │    └── controller
+│   │          └── AIController.java
+│   ├── resources
+│   │     ├── static
+│   │     │      └── index.html
+│   │     └── application.properties
+```
+
+> **Note:** Place `index.html` inside `src/main/resources/static`. Spring Boot automatically serves it.
+
+---
+
+# 📦 Required Dependencies
+
+```xml
+spring-boot-starter-web
+spring-ai-starter-model-azure-openai
+```
+
+### Purpose
+
+- **Spring Web** → Creates REST APIs.
+- **Spring AI Azure OpenAI** → Connects to Azure OpenAI.
+
+---
+
+# ⚙️ application.properties
+
+```properties
+spring.ai.azure.openai.api-key=${AZURE_OPENAI_KEY}
+spring.ai.azure.openai.endpoint=${AZURE_OPENAI_ENDPOINT}
+spring.ai.azure.openai.chat.options.deployment-name=${DEPLOYMENT_NAME}
+```
+
+### Purpose
+
+Stores:
+
+- API Key
+- Azure Endpoint
+- Deployment Name
+
+---
+
+# 🤖 System Prompt
+
+```java
+.defaultSystem(SYSTEM_PROMPT)
+```
+
+Registers a **default system prompt** for every request.
+
+### Why?
+
+Instead of writing
+
+```java
+.system(...)
+```
+
+for every request,
+
+configure it once:
+
+```java
+ChatClient.Builder
+        .defaultSystem(...)
+        .build();
+```
+
+Now every prompt automatically follows the same rules.
+
+---
+
+# 💬 Chat Endpoint
+
+```java
+GET /api/chat
+```
+
+Uses
+
+```java
+.call()
+```
+
+### Flow
+
+```text
+User
+
+↓
+
+Controller
+
+↓
+
+ChatClient
+
+↓
+
+Azure OpenAI
+
+↓
+
+Complete Response
+```
+
+Since `.call()` is **blocking**, the browser waits until the entire response is generated.
+
+---
+
+# ⚡ Streaming Endpoint
+
+```java
+GET /api/stream
+```
+
+Uses
+
+```java
+.stream()
+```
+
+Returns
+
+```java
+Flux<String>
+```
+
+instead of a single `String`.
+
+---
+
+# Why Streaming?
+
+Without Streaming (`.call()`)
+
+```text
+User
+   │
+Wait...
+Wait...
+Wait...
+Complete Response
+```
+
+The response appears only after the AI finishes generating everything.
+
+---
+
+With Streaming (`.stream()`)
+
+```text
+User
+   │
+Hello...
+This...
+is...
+Spring...
+AI...
+```
+
+The response appears **token by token**, just like **ChatGPT**.
+
+---
+
+# SSE (Server-Sent Events)
+
+```java
+produces = MediaType.TEXT_EVENT_STREAM_VALUE
+```
+
+Tells Spring Boot to stream each token immediately to the browser.
+
+Without it:
+
+❌ Wait until the complete response is ready.
+
+With it:
+
+✅ Live streaming.
+
+---
+
+# ChatClient Flow
+
+```text
+User Input
+
+↓
+
+ChatClient
+
+↓
+
+Default System Prompt
+
+↓
+
+User Prompt
+
+↓
+
+Azure OpenAI
+
+↓
+
+AI Response
+```
+
+---
+
+# Blocking vs Streaming
+
+| `.call()`                 | `.stream()`             |
+| ------------------------- | ----------------------- |
+| Blocking                  | Non-blocking            |
+| Returns `String`          | Returns `Flux<String>`  |
+| Complete response at once | Response token by token |
+| Simple APIs               | ChatGPT-like UI         |
+
+---
+
+# Quick Revision
+
+- `index.html` → Place inside `resources/static`.
+- `application.properties` → Stores Azure OpenAI configuration.
+- `defaultSystem()` → Applies one system prompt to every request.
+- `/api/chat` → Uses `.call()` (blocking).
+- `/api/stream` → Uses `.stream()` (streaming).
+- `Flux<String>` → Stream of text chunks.
+- `TEXT_EVENT_STREAM_VALUE` → Enables live streaming using SSE.
